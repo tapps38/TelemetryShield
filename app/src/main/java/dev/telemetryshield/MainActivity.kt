@@ -16,6 +16,7 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -41,6 +42,10 @@ class MainActivity : Activity() {
     private lateinit var allowField: EditText
     private lateinit var upstreamField: EditText
     private var lastRecent: List<String> = emptyList()
+    private lateinit var btStatus: TextView
+    private lateinit var scanStatus: TextView
+    private lateinit var nfcStatus: TextView
+    private lateinit var beaconAppsBox: LinearLayout
 
     private val ticker = object : Runnable {
         override fun run() { refresh(); handler.postDelayed(this, 1000) }
@@ -102,6 +107,58 @@ class MainActivity : Activity() {
         recentBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(recentBox)
 
+
+        root.addView(heading("Bluetooth & NFC"))
+        root.addView(hint(
+            "Stores can't read personal info off your phone over Bluetooth or NFC. In-store Bluetooth " +
+            "beacons only broadcast; the tracking happens when an app on your phone hears one and " +
+            "reports your visit. NFC only works within a few centimetres and payments need your phone unlocked."
+        ))
+        root.addView(CheckBox(this).apply {
+            text = "Block beacon & location-tracking companies"
+            isChecked = Blocklists.blockLocationSdks(this@MainActivity)
+            setPadding(0, dp(8), 0, dp(8))
+            setOnCheckedChangeListener { _, on ->
+                Thread {
+                    Blocklists.setBlockLocationSdks(this@MainActivity, on)
+                    runOnUiThread { updateListInfo() }
+                }.start()
+            }
+        })
+
+        btStatus = TextView(this).apply { setPadding(0, dp(8), 0, 0) }
+        root.addView(btStatus)
+        root.addView(Button(this).apply {
+            text = "Bluetooth settings"
+            setOnClickListener { RadioCheck.openBluetoothSettings(this@MainActivity) }
+        })
+        scanStatus = TextView(this).apply { setPadding(0, dp(8), 0, 0) }
+        root.addView(scanStatus)
+        root.addView(Button(this).apply {
+            text = "Bluetooth scanning setting"
+            setOnClickListener {
+                RadioCheck.openScanningSettings(this@MainActivity)
+                toast("Look for Location services › Bluetooth scanning")
+            }
+        })
+        nfcStatus = TextView(this).apply { setPadding(0, dp(8), 0, 0) }
+        root.addView(nfcStatus)
+        if (RadioCheck.hasNfc(this)) {
+            root.addView(Button(this).apply {
+                text = "NFC settings"
+                setOnClickListener { RadioCheck.openNfcSettings(this@MainActivity) }
+            })
+        }
+
+        root.addView(heading("Apps that can detect store beacons"))
+        root.addView(hint("These apps have the permissions needed to hear Bluetooth beacons and know where you are. Tap one to open its settings and remove Nearby devices or Location if it doesn't need them."))
+        beaconAppsBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(Button(this).apply {
+            text = "Check my apps"
+            setOnClickListener { checkBeaconApps() }
+        })
+        root.addView(beaconAppsBox)
+
         root.addView(heading("Block lists"))
         listInfo = hint("")
         root.addView(listInfo)
@@ -145,6 +202,13 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
+        val bt = RadioCheck.bluetoothOn(this)
+        btStatus.text = "Bluetooth: " + when (bt) { true -> "ON"; false -> "off"; null -> "unknown" }
+        val scan = RadioCheck.bleScanningOn(this)
+        scanStatus.text = "Bluetooth scanning (works even with Bluetooth off): " +
+            when (scan) { true -> "ON — consider turning it off"; false -> "off"; null -> "check in settings" }
+        nfcStatus.text = if (!RadioCheck.hasNfc(this)) "NFC: not on this phone" else
+            "NFC: " + when (RadioCheck.nfcOn(this)) { true -> "ON (only works within a few cm)"; false -> "off"; null -> "unknown" }
         val on = Stats.running
         status.text = if (on) "● Protection ON" else "○ Protection OFF"
         status.setTextColor(if (on) Color.rgb(46, 125, 50) else Color.rgb(183, 28, 28))
@@ -166,6 +230,30 @@ class MainActivity : Activity() {
                 })
             }
         }
+    }
+
+    private fun checkBeaconApps() {
+        beaconAppsBox.removeAllViews()
+        beaconAppsBox.addView(hint("Checking…"))
+        Thread {
+            val apps = try { RadioCheck.appsThatCanDetectBeacons(this) } catch (e: Exception) { null }
+            runOnUiThread {
+                beaconAppsBox.removeAllViews()
+                when {
+                    apps == null -> beaconAppsBox.addView(hint("Couldn't read the app list."))
+                    apps.isEmpty() -> beaconAppsBox.addView(hint("No installed apps can currently detect beacons. 👍"))
+                    else -> apps.forEach { app ->
+                        beaconAppsBox.addView(TextView(this).apply {
+                            text = app.label + "\n" + app.reasons.joinToString(" · ")
+                            textSize = 14f
+                            if (app.background) setTextColor(Color.rgb(183, 28, 28))
+                            setPadding(0, dp(8), 0, dp(8))
+                            setOnClickListener { RadioCheck.openAppSettings(this@MainActivity, app.pkg) }
+                        })
+                    }
+                }
+            }
+        }.start()
     }
 
     private fun updateListInfo() {

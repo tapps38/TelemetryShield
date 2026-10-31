@@ -1,0 +1,32 @@
+# Bluetooth beacon, proximity-marketing and location-data SDKs.
+# These kits sit inside apps, listen for in-store beacons / track location,
+# and upload store visits to data companies. Blocking them stops the upload.
+# Note: radar.io is also used for some "I'm here" curbside-pickup features;
+# allow it from the Recently blocked list if a store app's pickup check-in breaks.
+
+# Beacon / proximity platforms
+gimbal.com
+estimote.com
+kontakt.io
+beaconstac.com
+mobiquitynetworks.com
+aislelabs.com
+freckleiot.com
+
+# Location intelligence / store-visit measurement
+revealmobile.com
+inmarket.com
+radar.io
+cuebiq.com
+xmode.io
+huq.io
+tamoco.com
+placed.com
+groundtruth.com
+blis.com
+unacast.com
+near.co
+factual.com
+sense360.com
+placer.ai
+arity.com

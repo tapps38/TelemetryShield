@@ -10,6 +10,8 @@ import java.net.URL
 object Blocklists {
 
     private const val BASE_ASSET = "telemetry_base.txt"
+    private const val LOCATION_ASSET = "location_sdks.txt"
+    private const val KEY_BLOCK_LOCATION = "block_location_sdks"
     private const val DOWNLOADED_FILE = "downloaded_blocklist.txt"
     private const val KEY_URLS = "list_urls"
     private const val KEY_ALLOW = "allowlist"
@@ -55,6 +57,13 @@ object Blocklists {
 
     fun setUpstream(ctx: Context, value: String) = prefs(ctx).edit().putString(KEY_UPSTREAM, value.trim()).apply()
 
+    fun blockLocationSdks(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_BLOCK_LOCATION, true)
+
+    fun setBlockLocationSdks(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_BLOCK_LOCATION, on).apply()
+        reload(ctx)
+    }
+
     fun lastUpdate(ctx: Context): Long = prefs(ctx).getLong(KEY_LAST_UPDATE, 0)
 
     /** Rebuilds the matcher from the bundled list, the downloaded lists and the allowlist. */
@@ -63,6 +72,11 @@ object Blocklists {
         val blocked = HashSet<String>(4096)
         ctx.assets.open(BASE_ASSET).bufferedReader().useLines { lines ->
             lines.forEach { blocked.addAll(DomainMatcher.parseLine(it)) }
+        }
+        if (blockLocationSdks(ctx)) {
+            ctx.assets.open(LOCATION_ASSET).bufferedReader().useLines { lines ->
+                lines.forEach { blocked.addAll(DomainMatcher.parseLine(it)) }
+            }
         }
         val downloaded = File(ctx.filesDir, DOWNLOADED_FILE)
         if (downloaded.exists()) {

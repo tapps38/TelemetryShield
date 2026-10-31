@@ -6,6 +6,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Read-only: Bluetooth on/off status on Android 11 and older -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <!-- Needed to list which installed apps can detect Bluetooth beacons -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
     <application
         android:allowBackup="false"

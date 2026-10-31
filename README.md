@@ -15,6 +15,15 @@ An Android app that blocks tracking and telemetry domains on **every network**: 
 - **Downloadable:** by default, HaGeZi's "native tracker" lists (Samsung, Xiaomi, Huawei, Oppo/Realme, Vivo, TikTok, Amazon, Windows/Office). Tap **Save & update lists**. You can add any hosts file, plain domain list or `||domain^` Adblock-style list URL. For broader ad + tracker blocking, add e.g. `https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt`.
 - **Allowlist:** if an app breaks, tap the domain under "Recently blocked" to allow it.
 
+## Bluetooth & NFC
+
+Stores can't pull personal info off a phone over Bluetooth or NFC. In-store Bluetooth beacons only broadcast an ID, and the tracking happens when an app on the phone hears one and uploads the visit to a location-data company. NFC only works within a few centimetres, and payments need the phone unlocked.
+
+So the app handles this in three ways:
+- **Blocks beacon and location-tracking companies** (`assets/location_sdks.txt`, on by default) so apps that hear a beacon can't upload the visit.
+- **Shows Bluetooth, Bluetooth-scanning and NFC status**, with shortcuts to the settings. Android 13+ doesn't let apps switch radios off themselves. "Bluetooth scanning" lets apps scan for beacons even when Bluetooth is off, so it's worth turning off.
+- **Lists apps that can detect beacons**: apps holding *Nearby devices* plus location access. Tap one to remove those permissions.
+
 ## Build it
 
 **Option A: GitHub, no computer setup needed**
