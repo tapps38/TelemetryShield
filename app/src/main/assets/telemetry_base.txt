@@ -1,0 +1,95 @@
+# Telemetry Shield built-in list
+# Analytics, crash-reporting and vendor telemetry endpoints. Subdomains are blocked too.
+# Deliberately excludes domains that break login, push notifications or app stores.
+
+# Google / Firebase analytics
+app-measurement.com
+google-analytics.com
+ssl.google-analytics.com
+analytics.google.com
+googletagmanager.com
+firebaselogging.googleapis.com
+firebaselogging-pa.googleapis.com
+crashlyticsreports-pa.googleapis.com
+firebase-settings.crashlytics.com
+crashlytics.com
+
+# Google ads
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+adservice.google.com
+
+# Facebook / Meta SDK
+an.facebook.com
+pixel.facebook.com
+
+# Mobile attribution & analytics SDKs
+appsflyer.com
+appsflyersdk.com
+app.adjust.com
+adjust.io
+kochava.com
+singular.net
+api.mixpanel.com
+api-js.mixpanel.com
+api.amplitude.com
+api2.amplitude.com
+api.segment.io
+cdn.segment.com
+data.flurry.com
+startappservice.com
+config.uca.cloud.unity3d.com
+cdp.cloud.unity3d.com
+api.uca.cloud.unity3d.com
+
+# Crash / performance reporting
+sessions.bugsnag.com
+notify.bugsnag.com
+ingest.sentry.io
+mobile-collector.newrelic.com
+nr-data.net
+browser-intake-datadoghq.com
+in.appcenter.ms
+
+# Web analytics
+hotjar.com
+clarity.ms
+scorecardresearch.com
+quantserve.com
+chartbeat.net
+moatads.com
+omtrdc.net
+demdex.net
+2o7.net
+
+# Microsoft telemetry
+vortex.data.microsoft.com
+telemetry.microsoft.com
+events.data.microsoft.com
+settings-win.data.microsoft.com
+mobile.pipe.aria.microsoft.com
+
+# Samsung
+samsungads.com
+nmetrics.samsung.com
+dc.di.atlas.samsung.com
+
+# Xiaomi / MIUI
+tracking.miui.com
+tracking.intl.miui.com
+data.mistat.xiaomi.com
+data.mistat.intl.xiaomi.com
+sdkconfig.ad.xiaomi.com
+sdkconfig.ad.intl.xiaomi.com
+api.ad.xiaomi.com
+
+# Huawei
+metrics.data.hicloud.com
+logservice.hicloud.com
+logservice1.hicloud.com
+
+# Amazon
+device-metrics-us.amazon.com
+device-metrics-us-2.amazon.com
+amazon-adsystem.com
