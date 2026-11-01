@@ -12,7 +12,8 @@ An Android app that blocks tracking and telemetry domains on **every network**: 
 ## Block lists
 
 - **Built-in:** a curated list of analytics, crash-reporting and vendor telemetry endpoints (`app/src/main/assets/telemetry_base.txt`). It deliberately leaves out domains that would break logins, push notifications or app stores.
-- **Downloadable:** by default, HaGeZi's "native tracker" lists (Samsung, Xiaomi, Huawei, Oppo/Realme, Vivo, TikTok, Amazon, Windows/Office). Tap **Save & update lists**. You can add any hosts file, plain domain list or `||domain^` Adblock-style list URL. For broader ad + tracker blocking, add e.g. `https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt`.
+- **Phone & company lists**, each with its own switch: Samsung, Apple, Motorola/Lenovo, Xiaomi, Huawei, OPPO/Realme, Vivo, Amazon, Microsoft and TikTok. All are HaGeZi "native tracker" lists except Motorola. HaGeZi has no Motorola list, so `assets/motorola.txt` is built from the Motorola/Lenovo entries in HaGeZi's Pro list. It leaves out Lenovo's update servers.
+- **Extra lists:** any hosts file, plain domain list, `*.domain` wildcard list or `||domain^` Adblock-style list URL. For broader ad + tracker blocking, add e.g. `https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro-onlydomains.txt`.
 - **Allowlist:** if an app breaks, tap the domain under "Recently blocked" to allow it.
 
 ## Bluetooth & NFC
@@ -39,7 +40,7 @@ Command line: `./gradlew assembleDebug` (needs JDK 17+ and the Android SDK).
 ## Use it
 
 1. Open the app and tap **Turn on**. Accept the VPN prompt.
-2. Tap **Save & update lists** once to download the vendor lists.
+2. Under **Phone & company lists**, switch on the companies you want blocked. Lists download automatically, or tap **Update lists**.
 3. **Important:** set *Settings › Network & internet › Private DNS* to **Off** or **Automatic**. If it's set to a specific provider hostname, Android sends DNS directly to that provider and skips the filter.
 4. To keep it on after reboots: *Settings › Network & internet › VPN › ⚙ Telemetry Shield › Always-on VPN*.
 

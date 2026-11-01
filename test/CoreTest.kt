@@ -24,6 +24,8 @@ fun main() {
     check(DomainMatcher.parseLine("::1 ip6-localhost").isEmpty(), "skip ipv6 localhost")
     check(DomainMatcher.parseLine("1.2.3.4").isEmpty(), "skip bare IP")
     check(DomainMatcher.parseLine("com").isEmpty(), "skip bare TLD")
+    check(DomainMatcher.parseLine("*.metric.account-samsung.com") == listOf("metric.account-samsung.com"), "wildcard line")
+    check(DomainMatcher.parseLine("a.*.example.com").isEmpty(), "mid wildcard skipped")
 
     val m = DomainMatcher(setOf("app-measurement.com", "events.data.microsoft.com"), setOf("ok.events.data.microsoft.com"))
     check(m.isBlocked("app-measurement.com"), "exact block")

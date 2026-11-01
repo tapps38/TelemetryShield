@@ -57,7 +57,7 @@ class DomainMatcher(val blocked: Set<String>, val allowed: Set<String>) {
         }
 
         private fun clean(token: String): String? {
-            val d = token.trim().trimEnd('.').lowercase()
+            val d = token.trim().removePrefix("*.").trimEnd('.').lowercase()
             if (d.isEmpty() || d in IGNORED || '*' in d) return null
             if (IP_LIKE.containsMatchIn(d)) return null
             return if (VALID.matches(d)) d else null

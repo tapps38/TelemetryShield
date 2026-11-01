@@ -1,0 +1,25 @@
+# Motorola / Lenovo trackers
+# Built from the Motorola- and Lenovo-specific entries in HaGeZi's Pro list
+# (github.com/hagezi/dns-blocklists), since there is no dedicated Motorola list.
+# Leaves out Lenovo update/push servers (susapi, pushapi, lds) so system updates keep working.
+
+# Digital Turbine "Ignite": silently installs promoted apps on carrier & Motorola phones
+dtignite.com
+
+# Motorola analytics
+analytics.loyalty-program.motorola-cloud.com
+
+# Lenovo analytics, click tracking and ad SDK
+metrics.qira.lenovo.com
+a.lenovo.com
+click.lenovo.com
+s.lenovo.com
+trk.ecomm.lenovo.com
+adx-sdk.lenovomm.com
+fsr.lenovomm.com
+prw.lenovomm.com
+sdac.lenovomm.com
+uss-pid.lenovomm.com
+track.lenovo.com.cn
+sentry-lb.lenovo.com.cn
+sentry-lb.mbgcdn.lenovo.com.cn

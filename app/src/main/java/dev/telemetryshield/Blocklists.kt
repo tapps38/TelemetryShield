@@ -12,23 +12,34 @@ object Blocklists {
     private const val BASE_ASSET = "telemetry_base.txt"
     private const val LOCATION_ASSET = "location_sdks.txt"
     private const val KEY_BLOCK_LOCATION = "block_location_sdks"
-    private const val DOWNLOADED_FILE = "downloaded_blocklist.txt"
+    private const val LEGACY_DOWNLOADED_FILE = "downloaded_blocklist.txt"
     private const val KEY_URLS = "list_urls"
+    private const val KEY_PRESETS = "enabled_presets"
     private const val KEY_ALLOW = "allowlist"
     private const val KEY_UPSTREAM = "upstream_dns"
     private const val KEY_LAST_UPDATE = "last_update"
 
-    /** HaGeZi "native tracker" lists: vendor/OS telemetry only, no general ad blocking. */
-    val DEFAULT_URLS = listOf(
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.samsung.txt",
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.xiaomi.txt",
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.huawei.txt",
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.oppo-realme.txt",
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.vivo.txt",
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.tiktok.txt",
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.amazon.txt",
-        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/native.winoffice.txt",
+    /** A built-in, switchable list: either downloaded from [url] or bundled as [asset]. */
+    class Preset(val id: String, val label: String, val url: String? = null, val asset: String? = null)
+
+    private fun hagezi(name: String) =
+        "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.$name-onlydomains.txt"
+
+    val PRESETS = listOf(
+        Preset("samsung", "Samsung", url = hagezi("samsung")),
+        Preset("apple", "Apple (Apple Music, Apple TV, iCloud apps on Android)", url = hagezi("apple")),
+        Preset("motorola", "Motorola / Lenovo", asset = "motorola.txt"),
+        Preset("xiaomi", "Xiaomi", url = hagezi("xiaomi")),
+        Preset("huawei", "Huawei", url = hagezi("huawei")),
+        Preset("oppo-realme", "OPPO / Realme", url = hagezi("oppo-realme")),
+        Preset("vivo", "Vivo", url = hagezi("vivo")),
+        Preset("amazon", "Amazon", url = hagezi("amazon")),
+        Preset("winoffice", "Microsoft", url = hagezi("winoffice")),
+        Preset("tiktok", "TikTok", url = hagezi("tiktok")),
     )
+
+    /** Old per-vendor HaGeZi URLs saved by earlier versions; now covered by [PRESETS]. */
+    private val LEGACY_PRESET_URL = Regex("hagezi/dns-blocklists.*/native\\.")
 
     @Volatile var matcher = DomainMatcher(emptySet(), emptySet())
         private set
@@ -36,11 +47,41 @@ object Blocklists {
     private fun prefs(ctx: Context): SharedPreferences =
         ctx.getSharedPreferences("shield", Context.MODE_PRIVATE)
 
-    fun urls(ctx: Context): List<String> =
-        prefs(ctx).getString(KEY_URLS, null)?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() } ?: DEFAULT_URLS
+    private fun listsDir(ctx: Context) = File(ctx.filesDir, "lists").apply { mkdirs() }
 
-    fun setUrls(ctx: Context, urls: List<String>) =
-        prefs(ctx).edit().putString(KEY_URLS, urls.joinToString("\n")).apply()
+    private fun fileFor(ctx: Context, url: String) =
+        File(listsDir(ctx), "u" + Integer.toHexString(url.hashCode()) + ".txt")
+
+    // ---------- presets ----------
+
+    fun enabledPresets(ctx: Context): Set<String> =
+        HashSet(prefs(ctx).getStringSet(KEY_PRESETS, null) ?: PRESETS.map { it.id }.toSet())
+
+    fun setPresetEnabled(ctx: Context, id: String, on: Boolean) {
+        val set = enabledPresets(ctx)
+        if (on) set += id else set -= id
+        prefs(ctx).edit().putStringSet(KEY_PRESETS, set).apply()
+        reload(ctx)
+    }
+
+    /** True if a switched-on downloadable preset hasn't been downloaded yet. */
+    fun needsDownload(ctx: Context): Boolean {
+        val on = enabledPresets(ctx)
+        return PRESETS.any { it.id in on && it.url != null && !fileFor(ctx, it.url).exists() } ||
+            customUrls(ctx).any { !fileFor(ctx, it).exists() }
+    }
+
+    // ---------- custom lists ----------
+
+    fun customUrls(ctx: Context): List<String> =
+        (prefs(ctx).getString(KEY_URLS, null) ?: "").lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !LEGACY_PRESET_URL.containsMatchIn(it) }
+
+    fun setCustomUrls(ctx: Context, urls: List<String>) =
+        prefs(ctx).edit().putString(KEY_URLS, urls.map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")).apply()
+
+    // ---------- allowlist / settings ----------
 
     fun allowlist(ctx: Context): Set<String> =
         HashSet(prefs(ctx).getStringSet(KEY_ALLOW, emptySet()) ?: emptySet())
@@ -66,24 +107,33 @@ object Blocklists {
 
     fun lastUpdate(ctx: Context): Long = prefs(ctx).getLong(KEY_LAST_UPDATE, 0)
 
-    /** Rebuilds the matcher from the bundled list, the downloaded lists and the allowlist. */
+    // ---------- loading ----------
+
+    private fun addAsset(ctx: Context, name: String, into: MutableSet<String>) {
+        ctx.assets.open(name).bufferedReader().useLines { lines ->
+            lines.forEach { into.addAll(DomainMatcher.parseLine(it)) }
+        }
+    }
+
+    private fun addFile(file: File, into: MutableSet<String>) {
+        if (!file.exists()) return
+        file.bufferedReader().useLines { lines -> lines.forEach { into.addAll(DomainMatcher.parseLine(it)) } }
+    }
+
+    /** Rebuilds the matcher from the built-in lists, switched-on presets, custom lists and the allowlist. */
     @Synchronized
     fun reload(ctx: Context): Int {
+        File(ctx.filesDir, LEGACY_DOWNLOADED_FILE).delete()
         val blocked = HashSet<String>(4096)
-        ctx.assets.open(BASE_ASSET).bufferedReader().useLines { lines ->
-            lines.forEach { blocked.addAll(DomainMatcher.parseLine(it)) }
+        addAsset(ctx, BASE_ASSET, blocked)
+        if (blockLocationSdks(ctx)) addAsset(ctx, LOCATION_ASSET, blocked)
+        val on = enabledPresets(ctx)
+        for (p in PRESETS) {
+            if (p.id !in on) continue
+            p.asset?.let { addAsset(ctx, it, blocked) }
+            p.url?.let { addFile(fileFor(ctx, it), blocked) }
         }
-        if (blockLocationSdks(ctx)) {
-            ctx.assets.open(LOCATION_ASSET).bufferedReader().useLines { lines ->
-                lines.forEach { blocked.addAll(DomainMatcher.parseLine(it)) }
-            }
-        }
-        val downloaded = File(ctx.filesDir, DOWNLOADED_FILE)
-        if (downloaded.exists()) {
-            downloaded.bufferedReader().useLines { lines ->
-                lines.forEach { blocked.addAll(DomainMatcher.parseLine(it)) }
-            }
-        }
+        for (u in customUrls(ctx)) addFile(fileFor(ctx, u), blocked)
         matcher = DomainMatcher(blocked, allowlist(ctx))
         return blocked.size
     }
@@ -92,10 +142,10 @@ object Blocklists {
         if (matcher.size == 0) reload(ctx)
     }
 
-    /** Downloads every configured list. Blocking — call off the main thread. Returns a status message. */
+    /** Downloads every switched-on preset and custom list. Blocking — call off the main thread. */
     fun download(ctx: Context): String {
-        val all = LinkedHashSet<String>()
-        val urls = urls(ctx)
+        val on = enabledPresets(ctx)
+        val urls = PRESETS.filter { it.id in on }.mapNotNull { it.url } + customUrls(ctx)
         var ok = 0
         val failures = mutableListOf<String>()
         for (u in urls) {
@@ -106,9 +156,14 @@ object Blocklists {
                 conn.setRequestProperty("User-Agent", "TelemetryShield")
                 try {
                     if (conn.responseCode !in 200..299) throw RuntimeException("HTTP ${conn.responseCode}")
+                    val domains = LinkedHashSet<String>()
                     conn.inputStream.bufferedReader().useLines { lines ->
-                        lines.forEach { all.addAll(DomainMatcher.parseLine(it)) }
+                        lines.forEach { domains.addAll(DomainMatcher.parseLine(it)) }
                     }
+                    if (domains.isEmpty()) throw RuntimeException("no domains found")
+                    val tmp = File(listsDir(ctx), "download.tmp")
+                    tmp.bufferedWriter().use { w -> domains.forEach { w.write(it); w.newLine() } }
+                    tmp.renameTo(fileFor(ctx, u))
                     ok++
                 } finally {
                     conn.disconnect()
@@ -117,15 +172,10 @@ object Blocklists {
                 failures += "${u.substringAfterLast('/')}: ${e.message}"
             }
         }
-        if (ok == 0 && urls.isNotEmpty()) {
-            return "Update failed, kept previous lists.\n" + failures.joinToString("\n")
-        }
-        val tmp = File(ctx.filesDir, "$DOWNLOADED_FILE.tmp")
-        tmp.bufferedWriter().use { w -> all.forEach { w.write(it); w.newLine() } }
-        tmp.renameTo(File(ctx.filesDir, DOWNLOADED_FILE))
-        prefs(ctx).edit().putLong(KEY_LAST_UPDATE, System.currentTimeMillis()).apply()
+        if (ok > 0) prefs(ctx).edit().putLong(KEY_LAST_UPDATE, System.currentTimeMillis()).apply()
         val total = reload(ctx)
-        val msg = "Loaded $ok/${urls.size} lists. $total domains blocked in total."
-        return if (failures.isEmpty()) msg else msg + "\nFailed:\n" + failures.joinToString("\n")
+        val msg = if (urls.isEmpty()) "No downloadable lists are switched on. $total domains blocked."
+            else "Updated $ok/${urls.size} lists. $total domains blocked in total."
+        return if (failures.isEmpty()) msg else msg + "\n\nFailed (kept previous copy):\n" + failures.joinToString("\n")
     }
 }

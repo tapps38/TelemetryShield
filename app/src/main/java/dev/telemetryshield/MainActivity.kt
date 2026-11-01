@@ -57,6 +57,11 @@ class MainActivity : Activity() {
         Thread {
             Blocklists.ensureLoaded(this)
             runOnUiThread { updateListInfo() }
+            // First run (or after an update that added lists): fetch switched-on lists quietly.
+            if (Blocklists.needsDownload(this)) {
+                try { Blocklists.download(this) } catch (_: Exception) {}
+                runOnUiThread { updateListInfo() }
+            }
         }.start()
     }
 
@@ -159,13 +164,34 @@ class MainActivity : Activity() {
         })
         root.addView(beaconAppsBox)
 
-        root.addView(heading("Block lists"))
+        root.addView(heading("Phone & company lists"))
         listInfo = hint("")
         root.addView(listInfo)
-        root.addView(hint("One URL per line. Hosts files, plain domain lists and ||domain^ rules all work."))
-        urlsField = multiline(4).apply { setText(Blocklists.urls(this@MainActivity).joinToString("\n")) }
+        root.addView(hint("Built-in trackers of each company's phones, apps and services. Switch on the ones you use."))
+        val updateButton = Button(this).apply { text = "Update lists"; setOnClickListener { onUpdateLists(this) } }
+        val enabled = Blocklists.enabledPresets(this)
+        for (preset in Blocklists.PRESETS) {
+            root.addView(CheckBox(this).apply {
+                text = preset.label
+                isChecked = preset.id in enabled
+                setOnCheckedChangeListener { _, on ->
+                    Thread {
+                        Blocklists.setPresetEnabled(this@MainActivity, preset.id, on)
+                        runOnUiThread {
+                            updateListInfo()
+                            if (on && Blocklists.needsDownload(this@MainActivity)) onUpdateLists(updateButton)
+                        }
+                    }.start()
+                }
+            })
+        }
+        root.addView(updateButton)
+
+        root.addView(heading("Extra lists"))
+        root.addView(hint("Optional: one URL per line. Hosts files, plain domain lists and ||domain^ rules all work."))
+        urlsField = multiline(2).apply { setText(Blocklists.customUrls(this@MainActivity).joinToString("\n")) }
         root.addView(urlsField)
-        root.addView(Button(this).apply { text = "Save & update lists"; setOnClickListener { onUpdateLists(this) } })
+        root.addView(Button(this).apply { text = "Save & update extra lists"; setOnClickListener { onUpdateLists(updateButton) } })
 
         root.addView(heading("Allowlist"))
         root.addView(hint("Domains here are never blocked (subdomains included)."))
@@ -259,7 +285,8 @@ class MainActivity : Activity() {
     private fun updateListInfo() {
         val last = Blocklists.lastUpdate(this)
         listInfo.text = "${Blocklists.matcher.size} domains loaded. " +
-            if (last == 0L) "Lists not downloaded yet — only the built-in list is active."
+            if (Blocklists.needsDownload(this)) "Some switched-on lists aren't downloaded yet — tap Update lists."
+            else if (last == 0L) "Using built-in lists."
             else "Updated ${DateFormat.getDateTimeInstance().format(Date(last))}."
     }
 
@@ -278,14 +305,15 @@ class MainActivity : Activity() {
     }
 
     private fun onUpdateLists(button: Button) {
-        Blocklists.setUrls(this, urlsField.text.lines())
+        Blocklists.setCustomUrls(this, urlsField.text.lines())
+        if (!button.isEnabled) return
         button.isEnabled = false
         button.text = "Updating…"
         Thread {
             val msg = Blocklists.download(this)
             runOnUiThread {
                 button.isEnabled = true
-                button.text = "Save & update lists"
+                button.text = "Update lists"
                 updateListInfo()
                 AlertDialog.Builder(this).setMessage(msg).setPositiveButton("OK", null).show()
             }
