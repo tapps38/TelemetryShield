@@ -58,8 +58,8 @@ object Blocklists {
         HashSet(prefs(ctx).getStringSet(KEY_PRESETS, null) ?: PRESETS.map { it.id }.toSet())
 
     fun setPresetEnabled(ctx: Context, id: String, on: Boolean) {
-        val set = enabledPresets(ctx)
-        if (on) set += id else set -= id
+        val set = enabledPresets(ctx).toMutableSet()
+        if (on) set.add(id) else set.remove(id)
         prefs(ctx).edit().putStringSet(KEY_PRESETS, set).apply()
         reload(ctx)
     }

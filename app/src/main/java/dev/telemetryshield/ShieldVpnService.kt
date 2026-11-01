@@ -187,7 +187,7 @@ class ShieldVpnService : VpnService() {
         }
         if (result.isEmpty()) {
             try {
-                val cm = getSystemService(ConnectivityManager::class.java)
+                val cm = getSystemService(ConnectivityManager::class.java)!!
                 val net = cm.activeNetwork
                 cm.getLinkProperties(net)?.dnsServers
                     ?.filter { it.hostAddress != DNS_ADDRESS }
@@ -201,7 +201,7 @@ class ShieldVpnService : VpnService() {
     }
 
     private fun showForegroundNotification() {
-        val nm = getSystemService(NotificationManager::class.java)
+        val nm = getSystemService(NotificationManager::class.java)!!
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "Telemetry Shield", NotificationManager.IMPORTANCE_LOW)
         )
