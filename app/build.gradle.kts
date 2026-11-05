@@ -11,8 +11,8 @@ android {
         applicationId = "dev.telemetryshield"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     // Fixed debug key so every GitHub build can update the installed app in place.

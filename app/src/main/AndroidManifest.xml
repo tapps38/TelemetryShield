@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Keeps the weekly list update scheduled after a restart -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Read-only: Bluetooth on/off status on Android 11 and older -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <!-- Needed to list which installed apps can detect Bluetooth beacons -->
@@ -46,5 +48,24 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Local on-device DNS filter (VPN) that blocks telemetry domains" />
         </service>
+
+        <service
+            android:name=".ShieldTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_shield"
+            android:label="Telemetry Shield"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
+        <service
+            android:name=".ListUpdateJob"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 </manifest>

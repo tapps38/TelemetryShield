@@ -96,6 +96,8 @@ class ShieldVpnService : VpnService() {
             Stats.running = true
             Stats.lastError = null
             worker = Thread({ runLoop(pfd, pipe[0]) }, "dns-loop").also { it.start() }
+            ShieldTileService.refresh(this)
+            ListUpdateJob.sync(this)
         } catch (e: Exception) {
             Log.e(TAG, "start failed", e)
             Stats.lastError = "Start failed: ${e.message}"
@@ -238,6 +240,7 @@ class ShieldVpnService : VpnService() {
         try { tun?.close() } catch (_: IOException) {}
         tun = null
         stopForeground(STOP_FOREGROUND_REMOVE)
+        ShieldTileService.refresh(this)
     }
 
     override fun onRevoke() {

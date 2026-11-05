@@ -3,6 +3,8 @@ package dev.telemetryshield
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.StatusBarManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
@@ -10,6 +12,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.Icon
 import android.graphics.drawable.RippleDrawable
 import android.net.VpnService
 import android.os.Build
@@ -89,6 +92,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         goEdgeToEdge()
         setContentView(buildUi())
+        ListUpdateJob.sync(this)
         Thread {
             Blocklists.ensureLoaded(this)
             runOnUiThread { updateListInfo() }
@@ -294,6 +298,7 @@ class MainActivity : Activity() {
             })
         }
         hero.addView(tiles)
+        hero.addView(pillButton("Add switch to quick settings", filled = false) { addQuickSettingsTile() })
         root.addView(hero)
 
         // ---- store beacons
@@ -354,6 +359,12 @@ class MainActivity : Activity() {
             lists.addView(divider())
             lists.addView(row)
         }
+        val (autoRow, _) = switchRow("Update automatically", "Refreshes the lists about once a week", Blocklists.autoUpdate(this)) { on ->
+            Blocklists.setAutoUpdate(this, on)
+            ListUpdateJob.sync(this)
+        }
+        lists.addView(divider())
+        lists.addView(autoRow)
         lists.addView(updateButton)
         root.addView(lists)
 
@@ -582,6 +593,28 @@ class MainActivity : Activity() {
                 dialog().setMessage(msg).setPositiveButton("OK", null).show()
             }
         }.start()
+    }
+
+    private fun addQuickSettingsTile() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            val sbm = getSystemService(StatusBarManager::class.java)
+            if (sbm != null) {
+                sbm.requestAddTileService(
+                    ComponentName(this, ShieldTileService::class.java),
+                    "Telemetry Shield",
+                    Icon.createWithResource(this, R.drawable.ic_shield),
+                    mainExecutor,
+                ) { result ->
+                    if (result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) toast("It's already in quick settings")
+                }
+                return
+            }
+        }
+        dialog()
+            .setTitle("Add to quick settings")
+            .setMessage("Swipe down twice from the top of the screen, tap the pencil (edit) icon, then drag the Telemetry Shield tile into your active tiles.")
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     // ======================= start / stop =======================

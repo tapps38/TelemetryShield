@@ -18,6 +18,7 @@ object Blocklists {
     private const val KEY_ALLOW = "allowlist"
     private const val KEY_UPSTREAM = "upstream_dns"
     private const val KEY_LAST_UPDATE = "last_update"
+    private const val KEY_AUTO_UPDATE = "auto_update"
 
     /** A built-in, switchable list: either downloaded from [url] or bundled as [asset]. */
     class Preset(val id: String, val label: String, val url: String? = null, val asset: String? = null)
@@ -105,6 +106,10 @@ object Blocklists {
         reload(ctx)
     }
 
+    fun autoUpdate(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_AUTO_UPDATE, true)
+
+    fun setAutoUpdate(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean(KEY_AUTO_UPDATE, on).apply()
+
     fun lastUpdate(ctx: Context): Long = prefs(ctx).getLong(KEY_LAST_UPDATE, 0)
 
     // ---------- loading ----------
@@ -143,6 +148,7 @@ object Blocklists {
     }
 
     /** Downloads every switched-on preset and custom list. Blocking — call off the main thread. */
+    @Synchronized
     fun download(ctx: Context): String {
         val on = enabledPresets(ctx)
         val urls = PRESETS.filter { it.id in on }.mapNotNull { it.url } + customUrls(ctx)
